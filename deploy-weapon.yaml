@@ -1,0 +1,98 @@
+apiVersion: v1 # API version
+kind: Service # Type of kubernetes resource
+metadata:
+  name: weapon-service-postgres # Name of the service
+  labels: # Labels that will be applied to the service
+    app: weapon-service
+spec:
+  ports:
+    - port: 3306
+  selector: # Selects any Pod with labels `app=weapon-service,tier=postgres`
+    app: weapon-service
+    tier: postgres
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment # Type of the kubernetes resource
+metadata:
+  name: weapon-service-postgres-deployment # Name of the deployment
+  labels: # Labels applied to this deployment
+    app: weapon-service
+spec:
+  selector:
+    matchLabels: # This deployment applies to the Pods matching the specified labels
+      app: weapon-service
+      tier: postgres
+  strategy:
+    type: Recreate
+  template: # Template for the Pods in this deployment
+    metadata:
+      labels: # Labels to be applied to the Pods in this deployment
+        app: weapon-service
+        tier: postgres
+    spec: # The spec for the containers that will be run inside the Pods in this deployment
+      containers:
+        - image: postgres # The container image
+          name: postgres
+          env: # Environment variables passed to the container
+            - name: POSTGRES_DB
+              value: "weapon"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "1234"
+          ports:
+            - containerPort: 5432 # The port that the container exposes
+              name: postgres
+---
+apiVersion: apps/v1 # API version
+kind: Deployment # Type of kubernetes resource
+metadata:
+  name: weapon-service-server-deployment # Name of the deployment
+  labels: # Labels that will be applied to this deployment
+    app: weapon-service-server
+spec:
+  replicas: 1 # No. of replicas/pods to run in this deployment
+  selector:
+    matchLabels: # The deployment applies to any pods mayching the specified labels
+      app: weapon-service-server
+  template: # Template for creating the pods in this deployment
+    metadata:
+      labels: # Labels that will be applied to each Pod in this deployment
+        app: weapon-service-server
+    spec: # Spec for the containers that will be run in the Pods
+      containers:
+        - name: weapon-service-server
+          image: sybrenvg/apt-weapon-service
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8081 # The port that the container exposes
+          resources:
+            limits:
+              cpu: 0.2
+              memory: "200Mi"
+          env: # Environment variables supplied to the Pod
+            - name: POSTGRES_DB
+              value: "weapon"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "1234"
+            - name: POSTGRES_DB_HOST
+              value: "weapon-service-postgres"
+---
+apiVersion: v1 # API version
+kind: Service # Type of the kubernetes resource
+metadata:
+  name: weapon-service-server # Name of the service
+  labels: # Labels that will be applied to this service
+    app: weapon-service-server
+spec:
+  type: NodePort # The service will be exposed by opening a Port on each node and proxying it. Allowing connections from outside the cluster
+  selector:
+    app: weapon-service-server # The service exposes Pods with label `app=weapon-service-server`
+  ports: # Forward incoming connections on port 8081 to the target port 8081
+    - name: http
+      port: 8081
+      targetPort: 8081
