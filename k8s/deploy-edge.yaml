@@ -27,9 +27,9 @@ spec:
               memory: "200Mi"
           env: # Environment variables supplied to the Pod
             - name: BUILDER_SERVICE_BASEURL
-              value: "builder-service-server:8082"
+              value: "builder-service-server"
             - name: WEAPON_SERVICE_BASEURL
-              value: "weapon-service-server:8081"
+              value: "weapon-service-server"
 ---
 apiVersion: v1 # API version
 kind: Service # Type of the kubernetes resource
